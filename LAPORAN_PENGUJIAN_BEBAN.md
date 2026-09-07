@@ -67,13 +67,15 @@ Pengujian dilakukan dengan membombardir server menggunakan file statis berukuran
 **Tugas 1 - Little's Law:**
 - Menguji server tunggal pada port 3001
 - File test: 1KB, 100KB, 1MB, 10MB
-- Load bertahap dari 1 VU sampai 100 VU
+- Virtual Users: 20 paralel
+- Durasi: 1 menit (60 detik)
 
 **Tugas 2 - Amdahl's Law:**
 - 3 server node pada port 3001, 3002, 3003
 - Nginx LB pada port 8081
 - File test: 10MB (paling berat)
-- Load tetap 20 VU
+- Virtual Users: 20 paralel
+- Durasi: 1 menit (60 detik)
 
 ### 2.4 Formula yang Digunakan
 
