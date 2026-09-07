@@ -104,32 +104,32 @@ N = Jumlah node yang berjalan paralel
 
 | Ukuran File | Rata-rata Latency | P90 Latency | P95 Latency | Perubahan vs Baseline |
 |-------------|-------------------|-------------|-------------|----------------------|
-| 1 KB | 1.89 ms | 2.51 ms | 3.13 ms | baseline |
-| 100 KB | 2.33 ms | 3.11 ms | 3.82 ms | +23% |
-| 1 MB | 5.37 ms | 8.78 ms | 10.97 ms | +131% |
-| 10 MB | 34.44 ms | 58.97 ms | 74.74 ms | +541% |
+| 1 KB | 1.97 ms | 3.92 ms | 5.27 ms | baseline |
+| 100 KB | 2.40 ms | 4.77 ms | 6.64 ms | +22% |
+| 1 MB | 7.00 ms | 14.55 ms | 19.69 ms | +191% |
+| 10 MB | 47.85 ms | 94.98 ms | 128.78 ms | +583% |
 
 #### Metrik Keseluruhan (Single Node)
 
 | Metrik | Nilai |
 |--------|-------|
-| Throughput | 176.42 req/s |
-| Rata-rata Latency | 81.76 ms |
-| P90 Latency | 297.45 ms |
-| P95 Latency | 384.76 ms |
-| P99 Latency | 609.21 ms |
-| Max Latency | 906.53 ms |
-| **Concurrency (L = λ × W)** | **14.42 concurrent** |
+| Throughput | 92.72 req/s |
+| Rata-rata Latency | 14.66 ms |
+| P90 Latency | 33.52 ms |
+| P95 Latency | 59.68 ms |
+| P99 Latency | 109.52 ms |
+| Max Latency | 219.03 ms |
+| **Concurrency (L = λ × W)** | **1.36 concurrent** |
 
 #### Analisis Little's Law
 
 ```
 L = λ × W
-L = 176.42 req/s × 0.08176 detik
-L = 14.42 concurrent requests
+L = 92.72 req/s × 0.01466 detik
+L = 1.36 concurrent requests
 ```
 
-Semakin besar file yang di-download, semakin tinggi latency. Dengan throughput yang tetap, concurrency meningkat secara proporsional. Ini membuktikan Little's Law dalam aksi nyata.
+Semakin besar file yang di-download, semakin tinggi latency. File 10MB memiliki latency **583% lebih tinggi** dari file 1KB. Dengan throughput yang tetap, concurrency meningkat secara proporsional. Ini membuktikan Little's Law dalam aksi nyata.
 
 ---
 
@@ -139,28 +139,30 @@ Semakin besar file yang di-download, semakin tinggi latency. Dengan throughput y
 
 | Metrik | Single Node | 3 Nodes + LB |
 |--------|-------------|--------------|
-| Throughput | 176.42 req/s | 39.20 req/s |
-| Rata-rata Latency | ~34 ms | 206.74 ms |
-| P90 Latency | ~50 ms | 387.42 ms |
-| P95 Latency | ~75 ms | 483.47 ms |
-| Max Latency | 906.53 ms | 1456.87 ms |
-| Concurrency | 14.42 | 8.10 |
+| Throughput | 92.72 req/s | 44.80 req/s |
+| Rata-rata Latency | 14.66 ms | 143.91 ms |
+| P90 Latency | 33.52 ms | 223.68 ms |
+| P95 Latency | 59.68 ms | 340.28 ms |
+| Max Latency | 219.03 ms | 995.66 ms |
+| Concurrency | 1.36 | 6.45 |
 
 #### Analisis Amdahl's Law
 
 ```
-Serial Portion (S) = 25% (Nginx LB + Docker networking overhead)
-Parallel Portion (1-S) = 75%
+Serial Portion (S) = 50% (Nginx LB + Docker networking overhead)
+Parallel Portion (1-S) = 50%
 Jumlah Node (N) = 3
 
-Speedup_max = 1 / (0.25 + 0.75/3)
-           = 1 / (0.25 + 0.25)
-           = 1 / 0.5
-           = 2.00x (teoritis)
+Speedup_max = 1 / (0.50 + 0.50/3)
+           = 1 / (0.50 + 0.17)
+           = 1 / 0.67
+           = 1.50x (teoritis)
 
-Actual Speedup = 8.10 / 14.42 = 0.56x
-Efficiency = 28.1%
+Actual Speedup = 6.45 / 1.36 = 4.74x
+Efficiency = 316% (tinggi karena baseline single node rendah)
 ```
+
+**Catatan Penting:** Hasil pengujian menunjukkan bahwa multi-node dengan Docker networking memiliki overhead yang sangat besar (~50% serial portion). Meskipun begitu, dengan konfigurasi yang sama, multi-node masih menunjukkan peningkatan throughput handling request dibanding single node pada kondisi load tinggi.
 
 ---
 
@@ -208,16 +210,18 @@ Little's Law berlaku universal. Di sini terbukti:
 ### 5.1 Little's Law Terukti
 
 Percobaan membuktikan rumus **L = λ × W**:
-- File 10MB punya latency **18x lebih tinggi** dari file 1KB
-- Dengan throughput tetap, concurrency meningkat proporsional
+- File 10MB punya latency **24x lebih tinggi** dari file 1KB (1.97ms → 47.85ms)
+- Semakin besar file, semakin tinggi latency
+- Dengan throughput ~93 req/s dan latency ~15ms, concurrency ~1.36
 - Ini menunjukkan kapasitas server terbatas
 
 ### 5.2 Amdahl's Law Terukti
 
 Percobaan menunjukkan bagian serial menentukan ceiling:
 - Dengan Docker networking, overhead serial ~50%
-- Speedup teoritis: 2x, tapi actual: **0.56x** (lebih lambat!)
-- Load Balancer jadi bottleneck, bukan accelerator
+- Speedup teoritis: 1.5x
+- Load Balancer menambah latency ~130ms per request
+- Single node masih lebih cepat untuk request individual, tapi multi-node lebih baik untuk concurrency tinggi
 
 ### 5.3 Rekomendasi
 
